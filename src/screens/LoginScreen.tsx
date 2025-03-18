@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,24 +6,83 @@ import {
   TextInput, 
   TouchableOpacity,
   SafeAreaView,
+  Alert,
+  ActivityIndicator,
+  Linking
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigation';
+import { useTrelloAuthContext } from '../context/TrelloAuthContext';
 import colors from '../styles/color';
 import globalStyles from '../styles/globalStyles';
+
+// Replace with your actual Trello API key
+const TRELLO_API_KEY = 'd1ba10f27d1053f59aced0c0f52a7534';
+const REDIRECT_URL = 'trelltech://auth/callback';
 
 type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
 const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [apiKey, setApiKey] = useState(TRELLO_API_KEY);
+  const [apiToken, setApiToken] = useState('');
+  const [isManualTokenEntry, setIsManualTokenEntry] = useState(false);
+  
+  const { isLoading, error, loginWithCredentials, loginWithOAuth, handleOAuthCallback } = useTrelloAuthContext();
 
-  const handleLogin = () => {
-    // Here you would typically validate inputs and authenticate the user
-    // For this example, we'll just navigate to the Home screen
-    navigation.navigate('Home');
+  // Handle deep linking for OAuth callback
+  useEffect(() => {
+    const handleDeepLink = async (event: { url: string }) => {
+      const url = event.url;
+      if (url.includes('trelltech://auth/callback')) {
+        // Handle OAuth callback
+        await handleOAuthCallback(url, apiKey);
+        navigation.navigate('Home');
+      }
+    };
+
+    // Add event listener for deep links
+    Linking.addEventListener('url', handleDeepLink);
+
+    // Check for initial URL (app opened via deep link)
+    Linking.getInitialURL().then(url => {
+      if (url && url.includes('trelltech://auth/callback')) {
+        handleOAuthCallback(url, apiKey);
+        navigation.navigate('Home');
+      }
+    });
+
+    // Clean up
+    return () => {
+      // Remove event listener (updated for newer React Native versions)
+      Linking.removeAllListeners('url');
+    };
+  }, [apiKey, handleOAuthCallback, navigation]);
+
+  const handleManualLogin = async () => {
+    if (!apiKey || !apiToken) {
+      Alert.alert('Erreur', 'Veuillez entrer la clé API et le token');
+      return;
+    }
+
+    const success = await loginWithCredentials(apiKey, apiToken);
+    if (success) {
+      navigation.navigate('Home');
+    }
+  };
+
+  const handleOAuthLogin = async () => {
+    try {
+      await loginWithOAuth(apiKey, REDIRECT_URL);
+      // Navigation will happen after OAuth callback is received
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible d\'ouvrir l\'autorisation Trello');
+    }
+  };
+
+  const goToRegister = () => {
+    navigation.navigate('Register');
   };
 
   return (
@@ -41,50 +100,98 @@ const LoginScreen = () => {
         <Text style={styles.welcomeText}>BIENVENUE À PRISM</Text>
         
         <View style={styles.formContainer}>
-          <View style={styles.formHeader}>
-            <Text style={styles.formHeaderText}>Connexion</Text>
-          </View>
           
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>E-mail :</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Entrez votre email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
           
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Mot de passe :</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Entrez votre mot de passe"
-              secureTextEntry
-            />
-          </View>
+          {error && <Text style={styles.errorText}>{error}</Text>}
           
-          <View style={styles.forgotContainer}>
-            <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
-          </View>
+          {isManualTokenEntry ? (
+            <>
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Clé API Trello :</Text>
+                <TextInput
+                  style={styles.input}
+                  value={apiKey}
+                  onChangeText={setApiKey}
+                  placeholder="Entrez votre clé API Trello"
+                  autoCapitalize="none"
+                />
+              </View>
+              
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Token API Trello :</Text>
+                <TextInput
+                  style={styles.input}
+                  value={apiToken}
+                  onChangeText={setApiToken}
+                  placeholder="Entrez votre token API Trello"
+                  autoCapitalize="none"
+                />
+              </View>
+              
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={handleManualLogin}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={colors.textLight} />
+                ) : (
+                  <Text style={styles.actionButtonText}>Se connecter</Text>
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.secondaryButton}
+                onPress={() => setIsManualTokenEntry(false)}
+              >
+                <Text style={styles.secondaryButtonText}>Revenir en arrière</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <View style={styles.infoContainer}>
+                <Text style={styles.infoText}>
+                  Connectez-vous avec votre compte Trello pour accéder à vos tableaux et espaces de travail.
+                </Text>
+              </View>
+              
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={handleOAuthLogin}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={colors.textLight} />
+                ) : (
+                  <Text style={styles.actionButtonText}>Se connecter avec Trello</Text>
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.formHeader}
+                onPress={() => setIsManualTokenEntry(true)}
+              >
+             <Text style={styles.formHeaderText}>Connexion à Trello manuellement</Text>
+             </TouchableOpacity>
+
+            </>
+          )}
           
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={handleLogin}
-          >
-            <Text style={styles.actionButtonText}>Connexion</Text>
-          </TouchableOpacity>
+          <View style={styles.helpContainer}>
+            <Text style={styles.helpText}>
+              Besoin d'une clé API et d'un token ? 
+              <Text style={styles.helpLink} onPress={() => Linking.openURL('https://trello.com/app-key')}>
+                {' '}Comment je fais ?
+              </Text>
+            </Text>
+          </View>
           
           <View style={styles.switchFormContainer}>
             <Text style={styles.switchFormText}>
-              Vous n'avez pas de compte ?
+              Nouveau sur PRISM ?
             </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.switchFormLink}>S'inscrire</Text>
+            <TouchableOpacity onPress={goToRegister}>
+              <Text style={styles.switchFormLink}>Se créer un compte</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -163,23 +270,53 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 14,
   },
-  forgotContainer: {
-    alignItems: 'flex-end',
-    marginBottom: 15,
+  infoContainer: {
+    marginBottom: 20,
   },
-  forgotText: {
-    fontSize: 12,
-    color: '#1565c0',
+  infoText: {
+    textAlign: 'center',
+    fontSize: 14,
+    color: colors.text,
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
+    textAlign: 'center',
   },
   actionButton: {
     backgroundColor: colors.buttonPrimary,
-    padding: 10,
+    padding: 12,
     borderRadius: 3,
     alignItems: 'center',
+    marginBottom: 10,
   },
   actionButtonText: {
     color: colors.textLight,
     fontWeight: 'bold',
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    padding: 10,
+    borderRadius: 3,
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  secondaryButtonText: {
+    color: colors.accent,
+    fontSize: 14,
+  },
+  helpContainer: {
+    marginTop: 10,
+    marginBottom: 15,
+  },
+  helpText: {
+    fontSize: 12,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  helpLink: {
+    color: colors.accent,
+    textDecorationLine: 'underline',
   },
   switchFormContainer: {
     flexDirection: 'row',
@@ -197,3 +334,6 @@ const styles = StyleSheet.create({
 });
 
 export default LoginScreen;
+
+
+          

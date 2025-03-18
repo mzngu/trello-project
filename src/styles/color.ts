@@ -24,7 +24,6 @@ export default {
     tableRed: '#e57373',
     tablePurple: '#ab47bc',
     
-    // Misc
     border: '#64b5f6',
     inputBackground: '#e3f2fd',
   };
