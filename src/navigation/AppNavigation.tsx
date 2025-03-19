@@ -9,8 +9,10 @@ import BoardDetailScreen from '../screens/BoardDetailScreen';
 import CreateBoardScreen from '../screens/CreateBoardScreen';
 import CreateWorkspaceScreen from '../screens/CreateWorkspaceScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
+import MenuScreen from '../screens/MenuScreen';
 import colors from '../styles/color';
 import OrderScreen from '../screens/OrderScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 // Define the param list for our stack navigator
 export type RootStackParamList = {
@@ -23,6 +25,10 @@ export type RootStackParamList = {
   CreateBoard: { workspaceId: string; workspaceName: string };
   EditBoard: { boardId: string; boardName: string; workspaceId: string };
   CreateWorkspace: undefined;
+  Menu: undefined;
+  Settings: undefined;
+  Order: undefined;
+
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -55,6 +61,10 @@ const AppNavigation = () => {
       <Stack.Screen name="CreateWorkspace" component={CreateWorkspaceScreen} />
       <Stack.Screen name="CardDetail" component={CardDetailScreen} />
       <Stack.Screen name="Order" component={OrderScreen} />
+      <Stack.Screen name="Menu" component={MenuScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+
+
 
     </Stack.Navigator>
   );

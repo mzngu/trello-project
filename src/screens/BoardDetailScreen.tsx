@@ -202,9 +202,10 @@ const BoardDetailScreen = () => {
     <SafeAreaView style={styles.container}>
       <Header
         title={boardName}
-        showBackButton={true}
+        showMenu={true}
         onBackPress={() => navigation.goBack()}
       />
+
       
       <View style={styles.content}>
         {isLoading ? (

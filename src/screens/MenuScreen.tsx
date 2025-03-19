@@ -20,7 +20,7 @@ const MenuScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header title="TABLEAUX" showBack={true} />
+      <Header title="Menu" showBack={true} />
       
       <View style={styles.content}>
         <ScrollView style={styles.menuScrollView}>
@@ -30,20 +30,6 @@ const MenuScreen = () => {
               <Text style={styles.menuItemText}>Accueil</Text>
             </TouchableOpacity>
           </View>
-          
-          <TouchableOpacity 
-            style={[styles.tableItem, { backgroundColor: colors.tableRed }]}
-            onPress={() => navigation.navigate('Order', { tableId: '1', tableName: 'TABLEAU 1' })}
-          >
-            <Text style={styles.tableText}>TABLEAU 1</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.tableItem, { backgroundColor: colors.tablePurple }]}
-            onPress={() => navigation.navigate('Order', { tableId: '2', tableName: 'TABLEAU 2' })}
-          >
-            <Text style={styles.tableText}>TABLEAU 2</Text>
-          </TouchableOpacity>
           
           <View style={styles.menuItem}>
             <Text style={styles.menuItemDot}>•••••••••</Text>
