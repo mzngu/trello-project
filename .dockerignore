@@ -1,0 +1,40 @@
+# Node modules
+node_modules
+
+# Expo and React Native build folders
+.expo
+.expo-shared
+android/build
+ios/build
+ios/Pods
+web-build
+
+# Git and GitHub files
+.git
+.github
+.gitignore
+
+# Development environment files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs
+
+# Testing
+coverage
+__tests__
+jest.config.*
+
+# Environment variables
+.env*
+!.env.example
+
+# OS specific
+.DS_Store
+Thumbs.db

@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "PrismApp",
+    "slug": "prismapp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "src/assets/logoPrism.png",
+    "userInterfaceStyle": "light",
+    "scheme": "trelltech",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "src/assets/logoPrism.png",
+        "backgroundColor": "#b3e5fc"
+      }
+    },
+    "web": {
+      "favicon": "src/assets/logoPrism.png"
+    },
+    "sdkVersion": "52.0.0"
+  }
+}
