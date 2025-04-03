@@ -128,7 +128,7 @@ const SettingsScreen = () => {
           <Text style={[styles.settingsSectionTitle, { color: colors.textPrimary }]}>THÈME</Text>
           
           <View style={styles.settingsItem}>
-            <Text style={[styles.settingsLabel, { color: colors.textPrimary }]}>Mode Sombre</Text>
+            <Text style={[styles.settingsLabel, { color: colors.textPrimary }]}>Mode sombre/claire</Text>
             <Switch
               value={isDarkMode}
               onValueChange={toggleTheme}

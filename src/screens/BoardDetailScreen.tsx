@@ -1,4 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { PanGestureHandler } from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedGestureHandler,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  runOnJS,
+} from 'react-native-reanimated';
 import {
   View,
   Text,
