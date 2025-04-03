@@ -79,7 +79,8 @@ const BoardDetailScreen = () => {
     });
     setCardPositions(positions);
   }, [lists]);
-  
+
+  // Handle card movement
   const moveCard = async (cardId: string, newListId: string, newIndex: number) => {
     try {
       setIsLoading(true);
@@ -98,6 +99,78 @@ const BoardDetailScreen = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+ // Draggable card component
+  const DraggableCard = ({ card, listId, index }: { card: Card; listId: string; index: number }) => {
+    const translateX = useSharedValue(0);
+    const translateY = useSharedValue(0);
+    const isDragging = useSharedValue(false);
+    const zIndex = useSharedValue(0);
+
+    const gestureHandler = useAnimatedGestureHandler({
+      onStart: (_, ctx: { startX: number; startY: number }) => {
+        isDragging.value = true;
+        zIndex.value = 100;
+        ctx.startX = translateX.value;
+        ctx.startY = translateY.value;
+        runOnJS(setDraggingCard)({ id: card.id, listId, index, card });
+      },
+      onActive: (event, ctx) => {
+        translateX.value = ctx.startX + event.translationX;
+        translateY.value = ctx.startY + event.translationY;
+      },
+      onEnd: () => {
+        isDragging.value = false;
+        zIndex.value = 0;
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+        runOnJS(setDraggingCard)(null);
+      },
+    });
+
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [{ translateX: translateX.value }, { translateY: translateY.value }],
+      zIndex: zIndex.value,
+      opacity: isDragging.value ? 0.8 : 1,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDragging.value ? 0.3 : 0.1,
+      shadowRadius: isDragging.value ? 10 : 2,
+      elevation: isDragging.value ? 10 : 2,
+    }));
+
+    return (
+      <PanGestureHandler onGestureEvent={gestureHandler}>
+        <Animated.View style={[styles.cardContainer, animatedStyle]}>
+          <TableCard
+            card={card}
+            onPress={() => handleCardPress(card, listId)}
+          />
+        </Animated.View>
+      </PanGestureHandler>
+    );
+  };
+
+   // Drop zones for lists
+   const DropZone = ({ listId }: { listId: string }) => {
+    return (
+      <View
+        style={styles.dropZone}
+        onLayout={event => {
+          const { width, height } = event.nativeEvent.layout;
+          const newCardPositions = { ...cardPositions };
+          lists.forEach(list => {
+            if (list.id === listId) {
+              list.cards?.forEach((card, index) => {
+                newCardPositions[card.id] = { listId, index };
+              });
+            }
+          });
+          setCardPositions(newCardPositions);
+        }}
+      />
+    );
   };
 
   
@@ -155,7 +228,12 @@ const BoardDetailScreen = () => {
     editBoardNameButton: {
       marginLeft: 10,
     },
-    // Existing styles remain the same
+    cardContainer: {
+      marginBottom: 10,
+      backgroundColor: colors.card,
+      borderRadius: 5,
+      padding: 10,
+    },
     content: {
       flex: 1,
     },
@@ -799,7 +877,7 @@ const useBoardDetailStyles = createThemedStyles(colors => StyleSheet.create({
     },
   addCardButton: {
     padding: 10,
-    backgroundColor: colors.background, // Utilisez la couleur de fond des inputs
+    backgroundColor: colors.background, 
     borderRadius: 3,
     marginTop: 10,
   },
