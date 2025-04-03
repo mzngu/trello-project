@@ -47,13 +47,60 @@ interface Card {
   members?: { id: string; fullName: string; username: string }[];
 }
 
+interface CardPositions {
+  [cardId: string]: {
+    listId: string;
+    index: number;
+  };
+}
+
 const BoardDetailScreen = () => {
   const navigation = useNavigation<BoardDetailScreenNavigationProp>();
   const route = useRoute<BoardDetailScreenRouteProp>();
   const { colors } = useTheme();
   const { isLandscape } = useResponsive();
   const { boardId, boardName: initialBoardName, workspaceId } = route.params;
+  const [cardPositions, setCardPositions] = useState<CardPositions>({});
+  const [draggingCard, setDraggingCard] = useState<{
+    id: string;
+    listId: string;
+    index: number;
+    card: Card;
+  } | null>(null);
+  const [lists, setLists] = useState<List[]>([]); // Move the declaration and assignment of 'lists' here
+  
+  // Initialize card positions when lists change
+  useEffect(() => {
+    const positions: CardPositions = {};
+    lists.forEach(list => {
+      list.cards?.forEach((card, index) => {
+        positions[card.id] = { listId: list.id, index };
+      });
+    });
+    setCardPositions(positions);
+  }, [lists]);
+  
+  const moveCard = async (cardId: string, newListId: string, newIndex: number) => {
+    try {
+      setIsLoading(true);
+      
+      // Update the card's position in Trello
+      await CardService.moveCard(cardId, {
+        idList: newListId,
+        pos: newIndex === 0 ? 'top' : newIndex === lists.find(l => l.id === newListId)?.cards?.length ? 'bottom' : undefined
+      });
+      
+      // Refresh the board data
+      await fetchBoardData();
+    } catch (error) {
+      const errorInfo = handleApiError(error, 'Failed to move card');
+      Alert.alert('Erreur', errorInfo.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  
   const getStyles = () => StyleSheet.create({
     container: {
       flex: 1,
@@ -104,7 +151,7 @@ const BoardDetailScreen = () => {
       color: colors.textPrimary,
       paddingVertical: 5,
     },
-
+  
     editBoardNameButton: {
       marginLeft: 10,
     },
@@ -265,9 +312,6 @@ const BoardDetailScreen = () => {
       fontWeight: 'bold',
     },
   });
-
-
-  const [lists, setLists] = useState<List[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -282,48 +326,54 @@ const BoardDetailScreen = () => {
   // Board name editing states
   const [boardName, setBoardName] = useState(initialBoardName);
   const [isEditingBoardName, setIsEditingBoardName] = useState(false);
-
   // Fetch board data (lists and cards)
   const fetchBoardData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Fetch lists for the board
-      const listsData = await BoardService.getBoardLists(boardId);
-      
-      // For each list, fetch its cards
-      const listsWithCards = await Promise.all(
-        listsData.map(async (list: List) => {
-          const cards = await ListService.getListCards(list.id);
-          return { ...list, cards };
-        })
-      );
-      
-      setLists(listsWithCards);
-    } catch (error) {
-      const errorInfo = handleApiError(error, 'Failed to load board data');
-      setError(errorInfo.message);
-    } finally {
-      setIsLoading(false);
-    }
+    try {…}
   };
-
   // Update board name
   const handleUpdateBoardName = async () => {
-    if (!boardName.trim()) {
-      Alert.alert('Erreur', 'Le nom du tableau ne peut pas être vide');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      await BoardService.updateBoard(boardId, { name: boardName });
-      setIsEditingBoardName(false);
-    } catch (error) {
-      const errorInfo = handleApiError(error, 'Impossible de mettre à jour le nom du tableau');
-      Alert.alert('Erreur', errorInfo.message);
-    } finally {
+    if (!boardName.trim()) {…}
+    try {…}
+  };
+  // Load data on initial render
+  useEffect(() => {
+    fetchBoardData();
+  }, [boardId]);
+  // Refresh when the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchBoardData();
+    }, [boardId])
+  );
+  // Create a new list
+  const handleCreateList = async () => {
+    if (!newListName.trim()) {…}
+    try {…}
+  };
+  // Show the new card modal
+  const showAddCardModal = (listId: string) => {
+    setSelectedListId(listId);
+    setNewCardName('');
+    setNewCardDescription('');
+    setShowNewCardModal(true);
+  };
+  // Create a new card
+  const handleCreateCard = async () => {
+    if (!newCardName.trim() || !selectedListId) {…}
+    try {…}
+  };
+  // Handle card press
+  const handleCardPress = (card: Card, listId: string) => {
+    navigation.navigate('CardDetail', {
+      cardId: card.id,
+      cardName: card.name,
+      listId: listId,
+      boardId: boardId
+    });
+  };
+  // Archive a list
+  const handleArchiveList = (listId: string, listName: string) => {…};
+  const styles = getStyles();  } finally {
       setIsLoading(false);
     }
   };
