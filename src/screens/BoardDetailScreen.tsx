@@ -1,7 +1,7 @@
+import { PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import React, { useState, useEffect, useCallback } from 'react';
 import { PanGestureHandler } from 'react-native-gesture-handler';
 import Animated, {
-  useAnimatedGestureHandler,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -60,6 +60,9 @@ const BoardDetailScreen = () => {
   const { colors } = useTheme();
   const { isLandscape } = useResponsive();
   const { boardId, boardName: initialBoardName, workspaceId } = route.params;
+  const [lists, setLists] = useState<List[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [cardPositions, setCardPositions] = useState<CardPositions>({});
   const [draggingCard, setDraggingCard] = useState<{
     id: string;
@@ -85,13 +88,26 @@ const BoardDetailScreen = () => {
     try {
       setIsLoading(true);
       
-      // Update the card's position in Trello
+      // Find the target list
+      const targetList = lists.find(l => l.id === newListId);
+      if (!targetList) return;
+      
+      // Calculate position
+      let position: string | number = 'bottom';
+      if (newIndex === 0) {
+        position = 'top';
+      } else if (targetList.cards && newIndex < targetList.cards.length) {
+        // Calculate position between cards
+        const prevCard = targetList.cards[newIndex - 1];
+        const nextCard = targetList.cards[newIndex];
+        position = (prevCard.pos + nextCard.pos) / 2;
+      }
+      
       await CardService.moveCard(cardId, {
         idList: newListId,
-        pos: newIndex === 0 ? 'top' : newIndex === lists.find(l => l.id === newListId)?.cards?.length ? 'bottom' : undefined
+        pos: position
       });
       
-      // Refresh the board data
       await fetchBoardData();
     } catch (error) {
       const errorInfo = handleApiError(error, 'Failed to move card');
@@ -102,73 +118,84 @@ const BoardDetailScreen = () => {
   };
 
  // Draggable card component
-  const DraggableCard = ({ card, listId, index }: { card: Card; listId: string; index: number }) => {
-    const translateX = useSharedValue(0);
-    const translateY = useSharedValue(0);
-    const isDragging = useSharedValue(false);
-    const zIndex = useSharedValue(0);
+ const DraggableCard = ({ card, listId, index }: { card: Card; listId: string; index: number }) => {
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const isDragging = useSharedValue(false);
+  const zIndex = useSharedValue(0);
+  const cardHeight = useSharedValue(0);
 
-    const gestureHandler = useAnimatedGestureHandler({
-      onStart: (_, ctx: { startX: number; startY: number }) => {
-        isDragging.value = true;
-        zIndex.value = 100;
-        ctx.startX = translateX.value;
-        ctx.startY = translateY.value;
-        runOnJS(setDraggingCard)({ id: card.id, listId, index, card });
-      },
-      onActive: (event, ctx) => {
-        translateX.value = ctx.startX + event.translationX;
-        translateY.value = ctx.startY + event.translationY;
-      },
-      onEnd: () => {
-        isDragging.value = false;
-        zIndex.value = 0;
-        translateX.value = withSpring(0);
-        translateY.value = withSpring(0);
-        runOnJS(setDraggingCard)(null);
-      },
-    });
+  const gestureHandler = useAnimatedGestureHandler<
+    PanGestureHandlerGestureEvent,
+    { startX: number; startY: number }
+  >({
+    onStart: (event, ctx) => {
+      'worklet';
+      isDragging.value = true;
+      zIndex.value = 100;
+      ctx.startX = translateX.value;
+      ctx.startY = translateY.value;
+      runOnJS(setDraggingCard)({ id: card.id, listId, index, card });
+    },
+    onActive: (event, ctx) => {
+      'worklet';
+      translateX.value = ctx.startX + event.translationX;
+      translateY.value = ctx.startY + event.translationY;
+    },
+    onEnd: () => {
+      'worklet';
+      isDragging.value = false;
+      zIndex.value = 0;
+      translateX.value = withSpring(0);
+      translateY.value = withSpring(0);
+      runOnJS(setDraggingCard)(null);
+    },
+  });
 
-    const animatedStyle = useAnimatedStyle(() => ({
-      transform: [{ translateX: translateX.value }, { translateY: translateY.value }],
-      zIndex: zIndex.value,
-      opacity: isDragging.value ? 0.8 : 1,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDragging.value ? 0.3 : 0.1,
-      shadowRadius: isDragging.value ? 10 : 2,
-      elevation: isDragging.value ? 10 : 2,
-    }));
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }, { translateY: translateY.value }],
+    zIndex: zIndex.value,
+    opacity: isDragging.value ? 0.9 : 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: isDragging.value ? 5 : 2 },
+    shadowOpacity: isDragging.value ? 0.3 : 0.1,
+    shadowRadius: isDragging.value ? 10 : 2,
+    elevation: isDragging.value ? 10 : 2,
+    marginBottom: 8,
+  }));
 
-    return (
-      <PanGestureHandler onGestureEvent={gestureHandler}>
-        <Animated.View style={[styles.cardContainer, animatedStyle]}>
-          <TableCard
-            card={card}
-            onPress={() => handleCardPress(card, listId)}
-          />
-        </Animated.View>
-      </PanGestureHandler>
-    );
-  };
+  return (
+    <PanGestureHandler onGestureEvent={gestureHandler}>
+      <Animated.View 
+        style={[styles.cardContainer, animatedStyle]}
+        onLayout={event => {
+          cardHeight.value = event.nativeEvent.layout.height;
+        }}
+      >
+        <TableCard
+          card={card}
+          onPress={() => handleCardPress(card, listId)}
+        />
+      </Animated.View>
+    </PanGestureHandler>
+  );
+};
 
    // Drop zones for lists
-   const DropZone = ({ listId }: { listId: string }) => {
+   const DropZone = ({ listId, listIndex }: { listId: string; listIndex: number }) => {
+    const handleDrop = () => {
+      if (draggingCard && draggingCard.listId !== listId) {
+        moveCard(draggingCard.id, listId, 0); // Add to top of the new list
+      }
+    };
+
     return (
       <View
-        style={styles.dropZone}
-        onLayout={event => {
-          const { width, height } = event.nativeEvent.layout;
-          const newCardPositions = { ...cardPositions };
-          lists.forEach(list => {
-            if (list.id === listId) {
-              list.cards?.forEach((card, index) => {
-                newCardPositions[card.id] = { listId, index };
-              });
-            }
-          });
-          setCardPositions(newCardPositions);
-        }}
+        style={[
+          styles.dropZone,
+          draggingCard && draggingCard.listId !== listId && styles.dropZoneActive
+        ]}
+        onTouchEnd={handleDrop}
       />
     );
   };
