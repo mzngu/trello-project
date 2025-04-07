@@ -13,6 +13,7 @@ export const TrelloAuth = {
       await AsyncStorage.setItem('@trello_api_token', apiToken);
       API_KEY = apiKey;
       API_TOKEN = apiToken;
+      console.log('Credentials saved successfully');
       return true;
     } catch (error) {
       console.error('Error saving credentials:', error);
@@ -34,6 +35,18 @@ export const TrelloAuth = {
     }
   },
 
+  // Get stored credentials
+  getCredentials: async () => {
+    try {
+      const apiKey = await AsyncStorage.getItem('@trello_api_key');
+      const apiToken = await AsyncStorage.getItem('@trello_api_token');
+      return { apiKey, apiToken };
+    } catch (error) {
+      console.error('Error getting credentials:', error);
+      return { apiKey: null, apiToken: null };
+    }
+  },
+
   // Check if credentials are valid
   hasValidCredentials: async () => {
     try {
@@ -41,14 +54,18 @@ export const TrelloAuth = {
       const apiToken = await AsyncStorage.getItem('@trello_api_token');
       
       if (!apiKey || !apiToken) return false;
-
+      
+      // Update the global variables
+      API_KEY = apiKey;
+      API_TOKEN = apiToken;
+      
       // Validate by making a test API call
       const response = await axios.get(`${API_BASE_URL}/members/me`, {
         params: { key: apiKey, token: apiToken }
       });
-
       return response.status === 200;
     } catch (error) {
+      console.error('Credentials validation failed:', error);
       return false;
     }
   },
@@ -56,12 +73,15 @@ export const TrelloAuth = {
   // Validate credentials
   validateCredentials: async (apiKey, apiToken) => {
     try {
+      console.log('Validating credentials...');
       const response = await axios.get(`${API_BASE_URL}/members/me`, {
         params: { key: apiKey, token: apiToken }
       });
+      console.log('Validation response status:', response.status);
       return response.status === 200;
     } catch (error) {
       console.error('Credential validation error:', error);
+      console.error('Error details:', error.response?.data || 'No response data');
       return false;
     }
   }
@@ -74,16 +94,84 @@ const trelloClient = axios.create({
 
 // Request interceptor to add auth params
 trelloClient.interceptors.request.use(async (config) => {
-  const apiKey = await AsyncStorage.getItem('@trello_api_key');
-  const apiToken = await AsyncStorage.getItem('@trello_api_token');
-
-  config.params = {
-    ...config.params,
-    key: apiKey,
-    token: apiToken,
-  };
-
-  return config;
+  try {
+    const apiKey = await AsyncStorage.getItem('@trello_api_key');
+    const apiToken = await AsyncStorage.getItem('@trello_api_token');
+    
+    // Log request details for debugging (remove in production)
+    console.log(`Making ${config.method?.toUpperCase()} request to: ${config.url}`);
+    
+    config.params = {
+      ...config.params,
+      key: apiKey,
+      token: apiToken,
+    };
+    
+    return config;
+  } catch (error) {
+    console.error('Error in request interceptor:', error);
+    return config;
+  }
 });
+
+// Response interceptor for better error handling
+trelloClient.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response) {
+      console.error('API Error Response:', {
+        status: error.response.status,
+        data: error.response.data,
+        endpoint: error.config.url,
+        method: error.config.method?.toUpperCase(),
+      });
+    } else if (error.request) {
+      console.error('No response received:', error.request);
+    } else {
+      console.error('Error setting up request:', error.message);
+    }
+    return Promise.reject(error);
+  }
+);
+
+// API functions for boards
+export const TrelloBoards = {
+  // Get all boards
+  getBoards: async () => {
+    try {
+      const response = await trelloClient.get('/members/me/boards');
+      return response.data;
+    } catch (error) {
+      console.error('Error getting boards:', error);
+      throw error;
+    }
+  },
+  
+  // Create a new board
+  createBoard: async (name, description = '', defaultLists = true) => {
+    try {
+      console.log(`Creating board: ${name}`);
+      const response = await trelloClient.post('/boards', null, {
+        params: {
+          name,
+          desc: description,
+          defaultLists,
+          pos: 'top'
+        }
+      });
+      console.log('Board created successfully');
+      return response.data;
+    } catch (error) {
+      console.error('Error creating board:', error);
+      // More detailed error logging
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+      }
+      throw error;
+    }
+  }
+};
 
 export default trelloClient;

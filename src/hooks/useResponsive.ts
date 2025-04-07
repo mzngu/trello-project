@@ -30,7 +30,7 @@ export const useResponsive = () => {
       }
     });
 
-    return () => {
+    return () => {  
       dimensionSubscription.remove();
       ScreenOrientation.removeOrientationChangeListener(orientationSubscription);
     };

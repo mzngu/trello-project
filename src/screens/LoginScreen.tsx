@@ -83,9 +83,21 @@ const LoginScreen = () => {
     const handleDeepLink = (event: { url: string }) => {
       const { url } = event;
       if (url.startsWith(REDIRECT_URI)) {
-        const token = url.split('token=')[1];
+        // Extract token from fragment or query param
+        let token;
+        if (url.includes('#token=')) {
+          token = url.split('#token=')[1];
+        } else if (url.includes('?token=')) {
+          token = url.split('?token=')[1];
+        } else if (url.includes('token=')) {
+          token = url.split('token=')[1];
+        }
+        
         if (token) {
           handleTrelloCallback(token);
+        } else {
+          console.error('No token found in URL:', url);
+          Alert.alert('Erreur', 'Impossible de récupérer le token d\'authentification');
         }
       }
     };
@@ -96,7 +108,15 @@ const LoginScreen = () => {
     // Check initial URL (in case app was opened via deep link)
     Linking.getInitialURL().then(url => {
       if (url && url.startsWith(REDIRECT_URI)) {
-        const token = url.split('token=')[1];
+        let token;
+        if (url.includes('#token=')) {
+          token = url.split('#token=')[1];
+        } else if (url.includes('?token=')) {
+          token = url.split('?token=')[1];
+        } else if (url.includes('token=')) {
+          token = url.split('token=')[1];
+        }
+        
         if (token) {
           handleTrelloCallback(token);
         }
@@ -113,6 +133,9 @@ const LoginScreen = () => {
 
   const handleTrelloCallback = async (token: string) => {
     try {
+      // Log the token for debugging (remove in production)
+      console.log('Token received:', token);
+      
       // Validate and save credentials
       const isValid = await TrelloAuth.validateCredentials(TRELLO_CLIENT_ID, token);
       
@@ -154,9 +177,19 @@ const LoginScreen = () => {
         onNavigationStateChange={(navState) => {
           // Check if redirected to your callback URL
           if (navState.url.startsWith(REDIRECT_URI)) {
-            const token = navState.url.split('token=')[1];
+            let token;
+            if (navState.url.includes('#token=')) {
+              token = navState.url.split('#token=')[1];
+            } else if (navState.url.includes('?token=')) {
+              token = navState.url.split('?token=')[1];
+            } else if (navState.url.includes('token=')) {
+              token = navState.url.split('token=')[1];
+            }
+            
             if (token) {
               handleTrelloCallback(token);
+            } else {
+              console.error('No token found in URL:', navState.url);
             }
           }
         }}
