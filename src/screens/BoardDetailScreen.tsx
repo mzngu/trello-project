@@ -16,11 +16,15 @@ import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navig
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigation';
 import { BoardService, ListService, CardService, handleApiError } from '../services/api';
-import { useTheme, createThemedStyles } from '../context/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
 import { useResponsive } from '../hooks/useResponsive';
 import Header from '../components/Header';
 import TableCard from '../components/TableCard';
-import { Pencil, Trash } from 'lucide-react-native'; 
+
+// Use Text component for icons instead of Lucide to avoid dependency issues
+const PencilIcon = () => <Text style={{ fontSize: 20 }}>✎</Text>;
+const TrashIcon = () => <Text style={{ fontSize: 20 }}>🗑️</Text>;
+
 type BoardDetailScreenNavigationProp = StackNavigationProp<RootStackParamList, 'BoardDetail'>;
 type BoardDetailScreenRouteProp = RouteProp<RootStackParamList, 'BoardDetail'>;
 
@@ -45,210 +49,199 @@ const BoardDetailScreen = () => {
   const { isLandscape } = useResponsive();
   const { boardId, boardName: initialBoardName, workspaceId } = route.params;
 
-  const getStyles = () => StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    content: {
-      flex: 1,
-      flexDirection: isLandscape ? 'row' : 'column',
-    },
-    listsContainer: {
-      flexDirection: isLandscape ? 'row' : 'column',
-      padding: 10,
-    },
-    listColumn: {
-      width: isLandscape ? 250 : '100%',
-      backgroundColor: colors.card,
-      borderRadius: 5,
-      margin: 5,
-      padding: 10,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    boardNameContainer: {
-      paddingHorizontal: 15,
-      paddingVertical: 10,
-      backgroundColor: colors.card,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    boardNameDisplayContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    boardNameText: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: colors.textPrimary,
-      flex: 1,
-    },
-    boardNameInput: {
-      flex: 1,
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: colors.textPrimary,
-      paddingVertical: 5,
-    },
+  // Dynamic styles based on orientation and theme
+  const getStyles = () => {
+    const { width } = Dimensions.get('window');
+    const listWidth = isLandscape ? width * 0.4 : '100%';
 
-    editBoardNameButton: {
-      marginLeft: 10,
-    },
-    loaderContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    loadingText: {
-      marginTop: 10,
-      color: colors.textSecondary,
-    },
-    errorContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: 20,
-    },
-    errorText: {
-      color: 'red',
-      textAlign: 'center',
-      marginBottom: 20,
-    },
-    retryButton: {
-      backgroundColor: colors.accent,
-      padding: 10,
-      borderRadius: 5,
-    },
-    retryButtonText: {
-      color: colors.textLight,
-      fontWeight: 'bold',
-    },
-    Column: {
-      width: 280,
-      backgroundColor: colors.card,
-      borderRadius: 5,
-      marginRight: 10,
-      padding: 10,
-    },
-    listHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 10,
-    },
-    listTitle: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      color: colors.text,
-      flex: 1,
-    },
-    listColumn: {
-      width: 280,
-      backgroundColor: colors.card,
-      borderRadius: 5,
-      marginRight: 10,
-      padding: 10,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    archiveButton: {
-      fontSize: 24,
-      color: colors.textSecondary,
-      padding: 5,
-    },
-    cardsList: {
-      maxHeight: '100%',
-      backgroundColor: colors.background, 
+    return StyleSheet.create({
+      container: {
+        flex: 1,
+        backgroundColor: colors.background,
       },
-    addCardButton: {
-      padding: 10,
-      backgroundColor: colors.background, // Utilisez la couleur de fond des inputs
-      borderRadius: 3,
-      marginTop: 10,
-    },
-    addCardButtonText: {
-      color: colors.textSecondary,
-      textAlign: 'center',
-    },
-    addListColumn: {
-      width: 280,
-      backgroundColor: 'rgba(255,255,255,0.3)',
-      borderRadius: 5,
-      padding: 10,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 10,
-      borderWidth: 1,
-      borderColor: 'rgba(0,0,0,0.1)',
-      borderStyle: 'dashed',
-      height: 80,
-    },
-    addListText: {
-      color: colors.text,
-      fontSize: 16,
-    },
-    modalContainer: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    modalContent: {
-      width: '80%',
-      backgroundColor: colors.card,
-      borderRadius: 10,
-      padding: 20,
-    },
-    modalTitle: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      marginBottom: 15,
-      textAlign: 'center',
-    },
-    modalInput: {
-      backgroundColor: colors.inputBackground,
-      padding: 10,
-      borderRadius: 5,
-      marginBottom: 15,
-    },
-    textareaInput: {
-      height: 100,
-      textAlignVertical: 'top',
-    },
-    modalButtons: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-    },
-    modalButton: {
-      flex: 1,
-      padding: 10,
-      borderRadius: 5,
-      alignItems: 'center',
-    },
-    cancelButton: {
-      backgroundColor: '#e0e0e0',
-      marginRight: 10,
-    },
-    cancelButtonText: {
-      color: colors.text,
-    },
-    confirmButton: {
-      backgroundColor: colors.accent,
-    },
-    confirmButtonText: {
-      color: colors.textLight,
-      fontWeight: 'bold',
-    },
-  });
-
+      content: {
+        flex: 1,
+        flexDirection: isLandscape ? 'row' : 'column',
+      },
+      boardNameContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingVertical: 10,
+        backgroundColor: colors.card,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+      },
+      boardNameText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: colors.textPrimary,
+        flex: 1,
+      },
+      boardNameInput: {
+        flex: 1,
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: colors.textPrimary,
+        paddingVertical: 5,
+      },
+      actionIcons: {
+        flexDirection: 'row',
+        alignItems: 'center',
+      },
+      iconButton: {
+        marginLeft: 15,
+        padding: 5,
+      },
+      listsContainer: {
+        flexDirection: isLandscape ? 'row' : 'column',
+        padding: 10,
+      },
+      listColumn: {
+        width: listWidth,
+        backgroundColor: colors.card,
+        borderRadius: 5,
+        margin: 5,
+        padding: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+      listHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+      },
+      listTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: colors.text,
+        flex: 1,
+      },
+      cardsList: {
+        maxHeight: '100%',
+      },
+      addCardButton: {
+        padding: 10,
+        backgroundColor: colors.inputBackground,
+        borderRadius: 3,
+        marginTop: 10,
+        alignItems: 'center',
+      },
+      addCardButtonText: {
+        color: colors.textSecondary,
+      },
+      archiveButton: {
+        fontSize: 24,
+        color: colors.textSecondary,
+        padding: 5,
+      },
+      addListColumn: {
+        width: isLandscape ? 280 : '95%',
+        backgroundColor: 'rgba(255,255,255,0.3)',
+        borderRadius: 5,
+        padding: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        margin: 5,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.1)',
+        borderStyle: 'dashed',
+        height: 80,
+      },
+      addListText: {
+        color: colors.text,
+        fontSize: 16,
+      },
+      loaderContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+      },
+      loadingText: {
+        marginTop: 10,
+        color: colors.textSecondary,
+      },
+      errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+      },
+      errorText: {
+        color: 'red',
+        textAlign: 'center',
+        marginBottom: 20,
+      },
+      retryButton: {
+        backgroundColor: colors.accent,
+        padding: 10,
+        borderRadius: 5,
+      },
+      retryButtonText: {
+        color: colors.textLight,
+        fontWeight: 'bold',
+      },
+      modalContainer: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+      },
+      modalContent: {
+        width: '80%',
+        backgroundColor: colors.card,
+        borderRadius: 10,
+        padding: 20,
+      },
+      modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 15,
+        textAlign: 'center',
+        color: colors.textPrimary,
+      },
+      modalInput: {
+        backgroundColor: colors.inputBackground,
+        padding: 10,
+        borderRadius: 5,
+        marginBottom: 15,
+        color: colors.textPrimary,
+      },
+      textareaInput: {
+        height: 100,
+        textAlignVertical: 'top',
+      },
+      modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+      },
+      modalButton: {
+        flex: 1,
+        padding: 10,
+        borderRadius: 5,
+        alignItems: 'center',
+      },
+      cancelButton: {
+        backgroundColor: '#e0e0e0',
+        marginRight: 10,
+      },
+      confirmButton: {
+        backgroundColor: colors.accent,
+      },
+      confirmButtonText: {
+        color: colors.textLight,
+        fontWeight: 'bold',
+      },
+      cancelButtonText: {
+        color: colors.text,
+      },
+    });
+  };
 
   const [lists, setLists] = useState<List[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -311,6 +304,39 @@ const BoardDetailScreen = () => {
     }
   };
 
+  // Delete board
+  const handleDeleteBoardConfirmation = () => {
+    Alert.alert(
+      'Supprimer le tableau',
+      `Êtes-vous sûr de vouloir supprimer "${boardName}" ? Cette action est irréversible.`,
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel'
+        },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: handleDeleteBoard
+        }
+      ]
+    );
+  };
+
+  const handleDeleteBoard = async () => {
+    try {
+      setIsLoading(true);
+      await BoardService.deleteBoard(boardId);
+      // Navigate back after deletion
+      navigation.goBack();
+    } catch (error) {
+      const errorInfo = handleApiError(error, 'Impossible de supprimer le tableau');
+      Alert.alert('Erreur', errorInfo.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load data on initial render
   useEffect(() => {
     fetchBoardData();
@@ -357,38 +383,6 @@ const BoardDetailScreen = () => {
     setNewCardName('');
     setNewCardDescription('');
     setShowNewCardModal(true);
-  };
-
-  const handleDeleteBoardConfirmation = () => {
-    Alert.alert(
-      'Supprimer le tableau',
-      `Êtes-vous sûr de vouloir supprimer "${boardName}" ? Cette action est irréversible.`,
-      [
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: handleDeleteBoard
-        }
-      ]
-    );
-  };
-
-  const handleDeleteBoard = async () => {
-    try {
-      setIsLoading(true);
-      await BoardService.deleteBoard(boardId);
-      // Navigate back after deletion
-      navigation.goBack();
-    } catch (error) {
-      const errorInfo = handleApiError(error, 'Impossible de supprimer le tableau');
-      Alert.alert('Erreur', errorInfo.message);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Create a new card
@@ -462,6 +456,7 @@ const BoardDetailScreen = () => {
     );
   };
 
+  // Compute styles dynamically
   const styles = getStyles();
 
   return (
@@ -474,94 +469,95 @@ const BoardDetailScreen = () => {
       {/* Board Name Editing Section */}
       <View style={styles.boardNameContainer}>
         {isEditingBoardName ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TextInput
-              style={styles.boardNameInput}
-              value={boardName}
-              onChangeText={setBoardName}
-              autoFocus
-              onBlur={handleUpdateBoardName}
-              onSubmitEditing={handleUpdateBoardName}
-              placeholderTextColor={colors.textSecondary}
-            />
-          </View>
+          <TextInput
+            style={styles.boardNameInput}
+            value={boardName}
+            onChangeText={setBoardName}
+            autoFocus
+            onBlur={handleUpdateBoardName}
+            onSubmitEditing={handleUpdateBoardName}
+            placeholderTextColor={colors.textSecondary}
+          />
         ) : (
-          <View style={styles.boardNameDisplayContainer}>
-  <Text style={styles.boardNameText}>{boardName}</Text>
-  <View style={{ flexDirection: 'row' }}>
-    <TouchableOpacity 
-      onPress={() => setIsEditingBoardName(true)}
-      style={{ marginRight: 15 }}
-    >
-      <Pencil size={20} color={colors.textSecondary} />
-    </TouchableOpacity>
-    <TouchableOpacity 
-      onPress={() => handleDeleteBoardConfirmation()}
-    >
-      <Trash size={20} color={colors.error || '#FF0000'} />
-    </TouchableOpacity>
-  </View>
-</View>
+          <>
+            <Text style={styles.boardNameText}>{boardName}</Text>
+            <View style={styles.actionIcons}>
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={() => setIsEditingBoardName(true)}
+              >
+                <PencilIcon />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={handleDeleteBoardConfirmation}
+              >
+                <TrashIcon />
+              </TouchableOpacity>
+            </View>
+          </>
         )}
       </View>
       
       <View style={styles.content}>
         {isLoading ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <View style={styles.loaderContainer}>
             <ActivityIndicator size="large" color={colors.accent} />
-            <Text style={{ marginTop: 10, color: colors.textSecondary }}>
-              Chargement du tableau...
-            </Text>
+            <Text style={styles.loadingText}>Chargement du tableau...</Text>
           </View>
         ) : error ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-            <Text style={{ color: 'red', textAlign: 'center', marginBottom: 20 }}>
-              {error}
-            </Text>
-            <TouchableOpacity 
-              style={{ 
-                backgroundColor: colors.accent, 
-                padding: 10, 
-                borderRadius: 5 
-              }} 
-              onPress={fetchBoardData}
-            >
-              <Text style={{ color: colors.textLight, fontWeight: 'bold' }}>
-                Réessayer
-              </Text>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchBoardData}>
+              <Text style={styles.retryButtonText}>Réessayer</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <ScrollView 
             horizontal={isLandscape}
+            contentContainerStyle={{
+              flexDirection: isLandscape ? 'row' : 'column',
+              alignItems: isLandscape ? 'flex-start' : 'stretch',
+            }}
             style={styles.listsContainer}
           >
             {lists.map(list => (
               <View key={list.id} style={styles.listColumn}>
-                {/* Rest of the list rendering remains the same */}
+                <View style={styles.listHeader}>
+                  <Text style={styles.listTitle}>{list.name}</Text>
+                  <TouchableOpacity
+                    onPress={() => handleArchiveList(list.id, list.name)}
+                  >
+                    <Text style={styles.archiveButton}>×</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                <ScrollView style={styles.cardsList}>
+                  {list.cards?.map(card => (
+                    <TableCard 
+                      key={card.id}
+                      id={card.id}
+                      title={card.name}
+                      color={colors.card}
+                      onPress={() => handleCardPress(card, list.id)}
+                    />
+                  ))}
+                  
+                  <TouchableOpacity
+                    style={styles.addCardButton}
+                    onPress={() => showAddCardModal(list.id)}
+                  >
+                    <Text style={styles.addCardButtonText}>+ Ajouter une carte</Text>
+                  </TouchableOpacity>
+                </ScrollView>
               </View>
             ))}
             
-            {/* Add List Button */}
             <TouchableOpacity
-              style={{
-                width: 280,
-                backgroundColor: 'rgba(255,255,255,0.3)',
-                borderRadius: 5,
-                padding: 10,
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginRight: 10,
-                borderWidth: 1,
-                borderColor: 'rgba(0,0,0,0.1)',
-                borderStyle: 'dashed',
-                height: 80,
-              }}
+              style={styles.addListColumn}
               onPress={() => setShowNewListModal(true)}
             >
-              <Text style={{ color: colors.text, fontSize: 16 }}>
-                + Ajouter une liste
-              </Text>
+              <Text style={styles.addListText}>+ Ajouter une liste</Text>
             </TouchableOpacity>
           </ScrollView>
         )}
@@ -581,6 +577,7 @@ const BoardDetailScreen = () => {
             <TextInput
               style={styles.modalInput}
               placeholder="Nom de la liste"
+              placeholderTextColor={colors.textSecondary}
               value={newListName}
               onChangeText={setNewListName}
               autoFocus
@@ -619,6 +616,7 @@ const BoardDetailScreen = () => {
             <TextInput
               style={styles.modalInput}
               placeholder="Titre de la carte"
+              placeholderTextColor={colors.textSecondary}
               value={newCardName}
               onChangeText={setNewCardName}
               autoFocus
@@ -627,6 +625,7 @@ const BoardDetailScreen = () => {
             <TextInput
               style={[styles.modalInput, styles.textareaInput]}
               placeholder="Description (optionnelle)"
+              placeholderTextColor={colors.textSecondary}
               value={newCardDescription}
               onChangeText={setNewCardDescription}
               multiline
@@ -654,201 +653,5 @@ const BoardDetailScreen = () => {
     </SafeAreaView>
   );
 };
-
-// Use createThemedStyles to create dynamic styles
-const useBoardDetailStyles = createThemedStyles(colors => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-
-  // Add new board name editing styles
-  boardNameContainer: {
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  boardNameDisplayContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  boardNameText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    flex: 1,
-  },
-  editBoardNameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  boardNameInput: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: 'bold',
-    paddingVertical: 5,
-  },
-  editBoardNameButton: {
-    marginLeft: 10,
-  },
-  // Existing styles remain the same
-  content: {
-    flex: 1,
-  },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    color: colors.textSecondary,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorText: {
-    color: 'red',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: colors.accent,
-    padding: 10,
-    borderRadius: 5,
-  },
-  retryButtonText: {
-    color: colors.textLight,
-    fontWeight: 'bold',
-  },
-  listsContainer: {
-    flex: 1,
-    padding: 10,
-  },
-  Column: {
-    width: 280,
-    backgroundColor: colors.card,
-    borderRadius: 5,
-    marginRight: 10,
-    padding: 10,
-  },
-  listHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  listTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.text,
-    flex: 1,
-  },
-  listColumn: {
-    width: 280,
-    backgroundColor: colors.card,
-    borderRadius: 5,
-    marginRight: 10,
-    padding: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  archiveButton: {
-    fontSize: 24,
-    color: colors.textSecondary,
-    padding: 5,
-  },
-  cardsList: {
-    maxHeight: '100%',
-    backgroundColor: colors.background, 
-    },
-  addCardButton: {
-    padding: 10,
-    backgroundColor: colors.background, // Utilisez la couleur de fond des inputs
-    borderRadius: 3,
-    marginTop: 10,
-  },
-  addCardButtonText: {
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  addListColumn: {
-    width: 280,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 5,
-    padding: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
-    borderStyle: 'dashed',
-    height: 80,
-  },
-  addListText: {
-    color: colors.text,
-    fontSize: 16,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    width: '80%',
-    backgroundColor: colors.card,
-    borderRadius: 10,
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  modalInput: {
-    backgroundColor: colors.inputBackground,
-    padding: 10,
-    borderRadius: 5,
-    marginBottom: 15,
-  },
-  textareaInput: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  modalButton: {
-    flex: 1,
-    padding: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#e0e0e0',
-    marginRight: 10,
-  },
-  cancelButtonText: {
-    color: colors.text,
-  },
-  confirmButton: {
-    backgroundColor: colors.accent,
-  },
-  confirmButtonText: {
-    color: colors.textLight,
-    fontWeight: 'bold',
-  },
-}));
 
 export default BoardDetailScreen;
