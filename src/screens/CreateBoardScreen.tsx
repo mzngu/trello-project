@@ -6,56 +6,54 @@ import {
   TextInput,
   TouchableOpacity,
   SafeAreaView,
-  ActivityIndicator,
+  ScrollView,
   Alert,
-  ScrollView
+  ActivityIndicator
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigation';
-import { BoardService, handleApiError } from '../services/api';
 import { useTheme, createThemedStyles } from '../context/ThemeContext';
 import Header from '../components/Header';
+import { BoardService } from '../services/api';
+import { handleApiError } from '../services/api';
 
 type CreateBoardScreenNavigationProp = StackNavigationProp<RootStackParamList, 'CreateBoard'>;
 type CreateBoardScreenRouteProp = RouteProp<RootStackParamList, 'CreateBoard'>;
 
-// Board template options
+// Templates for board creation
 const BOARD_TEMPLATES = [
-  { id: 'kanban', name: 'Kanban', description: 'À faire, En cours, Terminé' },
-  { id: 'sprint', name: 'Sprint', description: 'Backlog, Planning, En cours, Revue, Terminé' },
-  { id: 'project', name: 'Projet', description: 'Idées, Planning, En cours, Test, Terminé' },
-  { id: 'none', name: 'Tableau vide', description: 'Aucune liste pré-définie' }
-];
-
-// Color options for the board
-const BOARD_COLORS = [
-  { id: 'blue', color: '#0079BF', name: 'Bleu' },
-  { id: 'orange', color: '#D29034', name: 'Orange' },
-  { id: 'green', color: '#519839', name: 'Vert' },
-  { id: 'red', color: '#B04632', name: 'Rouge' },
-  { id: 'purple', color: '#89609E', name: 'Violet' },
-  { id: 'pink', color: '#CD5A91', name: 'Rose' },
-  { id: 'lime', color: '#4BBF6B', name: 'Lime' },
-  { id: 'sky', color: '#00AECC', name: 'Ciel' },
-  { id: 'grey', color: '#838C91', name: 'Gris' }
+  {
+    id: 'kanban',
+    name: 'Kanban',
+    description: 'Visualize work, limit work-in-progress, and maximize efficiency',
+    lists: ['To Do', 'Doing', 'Done']
+  },
+  {
+    id: 'simple',
+    name: 'Simple Project',
+    description: 'Basic project management board',
+    lists: ['Backlog', 'In Progress', 'Completed']
+  }
 ];
 
 const CreateBoardScreen = () => {
   const navigation = useNavigation<CreateBoardScreenNavigationProp>();
   const route = useRoute<CreateBoardScreenRouteProp>();
-  const { workspaceId, workspaceName } = route.params;
   const { colors } = useTheme();
   const styles = useCreateBoardStyles();
 
+  const { workspaceId, workspaceName } = route.params;
+
+  // Board creation states
   const [boardName, setBoardName] = useState('');
   const [boardDescription, setBoardDescription] = useState('');
-  const [selectedTemplate, setSelectedTemplate] = useState(BOARD_TEMPLATES[0].id);
-  const [selectedColor, setSelectedColor] = useState(BOARD_COLORS[0].id);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
   // Handle board creation
   const handleCreateBoard = async () => {
+    // Validate inputs
     if (!boardName.trim()) {
       Alert.alert('Erreur', 'Veuillez entrer un nom pour le tableau');
       return;
@@ -63,31 +61,32 @@ const CreateBoardScreen = () => {
 
     try {
       setIsCreating(true);
-      
-      // Find the color object
-      const colorObj = BOARD_COLORS.find(color => color.id === selectedColor);
-      
-      // Create board
+
+      // Create board with selected template
       const newBoard = await BoardService.createBoard({
         name: boardName,
         description: boardDescription,
         workspaceId: workspaceId,
-        template: selectedTemplate !== 'none' ? selectedTemplate : undefined,
-        prefs: {
-          backgroundColor: colorObj?.color
-        }
+        template: selectedTemplate || 'simple'
       });
-      
-      // Navigate to the newly created board
+
+      // Navigate back to workspace or board detail
       navigation.replace('BoardDetail', {
         boardId: newBoard.id,
         boardName: newBoard.name,
         workspaceId: workspaceId
       });
-      
+
+      // Show success message
+      Alert.alert(
+        'Succès',
+        `Le tableau "${boardName}" a été créé avec succès.`,
+        [{text: 'OK'}]
+      );
     } catch (error) {
-      const errorInfo = handleApiError(error, 'Failed to create board');
+      const errorInfo = handleApiError(error, 'Échec de la création du tableau');
       Alert.alert('Erreur', errorInfo.message);
+    } finally {
       setIsCreating(false);
     }
   };
@@ -96,100 +95,74 @@ const CreateBoardScreen = () => {
     <SafeAreaView style={styles.container}>
       <Header
         title="Créer un tableau"
-        showBackButton={true}
+        showBack={true}
         onBackPress={() => navigation.goBack()}
       />
-      
+
       <ScrollView style={styles.content}>
+        {/* Board Basic Information */}
         <View style={styles.formSection}>
-          <Text style={styles.workspaceInfo}>
-            Espace de travail: <Text style={styles.workspaceName}>{workspaceName}</Text>
-          </Text>
-          
+          <Text style={styles.sectionTitle}>Informations du tableau</Text>
+
           <Text style={styles.inputLabel}>Nom du tableau *</Text>
           <TextInput
             style={styles.input}
             value={boardName}
             onChangeText={setBoardName}
-            placeholder="Ex: Développement produit, Marketing campagne..."
+            placeholder="Ex: Projet Marketing, Développement Web..."
             autoFocus
           />
-          
+
           <Text style={styles.inputLabel}>Description (optionnelle)</Text>
           <TextInput
             style={[styles.input, styles.textareaInput]}
             value={boardDescription}
             onChangeText={setBoardDescription}
-            placeholder="Décrivez le but de ce tableau..."
+            placeholder="Décrivez l'objectif de ce tableau..."
             multiline
             numberOfLines={4}
             textAlignVertical="top"
           />
         </View>
-        
+
+        {/* Template Selection */}
         <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Modèle</Text>
-          <Text style={styles.sectionDescription}>
-            Choisissez un modèle pour commencer avec des listes pré-définies
-          </Text>
-          
-          <View style={styles.templateOptions}>
-            {BOARD_TEMPLATES.map((template) => (
-              <TouchableOpacity
-                key={template.id}
-                style={[
-                  styles.templateOption,
-                  selectedTemplate === template.id && styles.selectedTemplate
-                ]}
-                onPress={() => setSelectedTemplate(template.id)}
-              >
-                <Text 
-                  style={[
-                    styles.templateName,
-                    selectedTemplate === template.id && styles.selectedTemplateName
-                  ]}
-                >
-                  {template.name}
-                </Text>
-                <Text 
-                  style={[
-                    styles.templateDescription,
-                    selectedTemplate === template.id && styles.selectedTemplateDescription
-                  ]}
-                >
-                  {template.description}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-        
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Couleur d'arrière-plan</Text>
-          
-          <View style={styles.colorOptions}>
-            {BOARD_COLORS.map((colorOption) => (
-              <TouchableOpacity
-                key={colorOption.id}
-                style={[
-                  styles.colorOption,
-                  { backgroundColor: colorOption.color },
-                  selectedColor === colorOption.id && styles.selectedColor
-                ]}
-                onPress={() => setSelectedColor(colorOption.id)}
-              >
-                {selectedColor === colorOption.id && (
-                  <Text style={styles.colorCheckmark}>✓</Text>
+          <Text style={styles.sectionTitle}>Choisir un modèle</Text>
+
+          {BOARD_TEMPLATES.map((template) => (
+            <TouchableOpacity
+              key={template.id}
+              style={[
+                styles.templateItem,
+                selectedTemplate === template.id && styles.selectedTemplate
+              ]}
+              onPress={() => setSelectedTemplate(template.id)}
+            >
+              <View style={styles.templateHeader}>
+                <Text style={styles.templateName}>{template.name}</Text>
+                {selectedTemplate === template.id && (
+                  <Text style={styles.selectedIcon}>✓</Text>
                 )}
-              </TouchableOpacity>
-            ))}
-          </View>
+              </View>
+              <Text style={styles.templateDescription}>
+                {template.description}
+              </Text>
+              <View style={styles.templateListPreview}>
+                {template.lists.map((list, index) => (
+                  <View key={index} style={styles.templateListItem}>
+                    <Text style={styles.templateListItemText}>{list}</Text>
+                  </View>
+                ))}
+              </View>
+            </TouchableOpacity>
+          ))}
         </View>
-        
+
+        {/* Create Board Button */}
         <TouchableOpacity
           style={[
             styles.createButton,
-            !boardName.trim() && styles.disabledButton
+            (!boardName.trim() || isCreating) && styles.disabledButton
           ]}
           onPress={handleCreateBoard}
           disabled={!boardName.trim() || isCreating}
@@ -197,7 +170,9 @@ const CreateBoardScreen = () => {
           {isCreating ? (
             <ActivityIndicator size="small" color={colors.textLight} />
           ) : (
-            <Text style={styles.createButtonText}>Créer le tableau</Text>
+            <Text style={styles.createButtonText}>
+              Créer le tableau
+            </Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -205,7 +180,7 @@ const CreateBoardScreen = () => {
   );
 };
 
-// Use createThemedStyles to create dynamic styles
+// Styles using createThemedStyles
 const useCreateBoardStyles = createThemedStyles(colors => StyleSheet.create({
   container: {
     flex: 1,
@@ -217,105 +192,92 @@ const useCreateBoardStyles = createThemedStyles(colors => StyleSheet.create({
   },
   formSection: {
     backgroundColor: colors.card,
-    borderRadius: 5,
+    borderRadius: 8,
     padding: 15,
     marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  workspaceInfo: {
-    fontSize: 14,
-    marginBottom: 15,
-    color: colors.textSecondary,
-  },
-  workspaceName: {
+  sectionTitle: {
+    fontSize: 16,
     fontWeight: 'bold',
-    color: colors.text,
+    marginBottom: 15,
+    color: colors.textPrimary,
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: 'bold',
     marginBottom: 5,
+    color: colors.textPrimary,
   },
   input: {
     backgroundColor: colors.inputBackground,
-    borderRadius: 3,
+    borderRadius: 5,
     padding: 10,
     marginBottom: 15,
+    color: colors.textPrimary,
   },
   textareaInput: {
     minHeight: 100,
+    textAlignVertical: 'top',
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  sectionDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 15,
-  },
-  templateOptions: {
+  templateItem: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 15,
     marginBottom: 10,
-  },
-  templateOption: {
-    backgroundColor: colors.inputBackground,
-    borderRadius: 3,
-    padding: 10,
-    marginBottom: 8,
-    borderWidth: 2,
-    borderColor: 'transparent',
   },
   selectedTemplate: {
     borderColor: colors.accent,
-    backgroundColor: `${colors.accent}20`, // 20% opacity
+    backgroundColor: colors.inputBackground,
+  },
+  templateHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   templateName: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 2,
+    color: colors.textPrimary,
   },
-  selectedTemplateName: {
+  selectedIcon: {
     color: colors.accent,
+    fontSize: 18,
   },
   templateDescription: {
-    fontSize: 12,
+    fontSize: 14,
     color: colors.textSecondary,
+    marginBottom: 10,
   },
-  selectedTemplateDescription: {
-    color: colors.text,
-  },
-  colorOptions: {
+  templateListPreview: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 10,
+    justifyContent: 'space-between',
   },
-  colorOption: {
-    width: 40,
-    height: 40,
+  templateListItem: {
+    backgroundColor: colors.border,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
     borderRadius: 4,
-    margin: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
   },
-  selectedColor: {
-    borderColor: '#ffffff',
-  },
-  colorCheckmark: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: 'bold',
+  templateListItemText: {
+    fontSize: 12,
+    color: colors.textLight,
   },
   createButton: {
     backgroundColor: colors.accent,
     padding: 15,
-    borderRadius: 5,
+    borderRadius: 8,
     alignItems: 'center',
     marginBottom: 30,
   },
   disabledButton: {
-    backgroundColor: '#cccccc',
+    backgroundColor: colors.textSecondary,
   },
   createButtonText: {
     color: colors.textLight,

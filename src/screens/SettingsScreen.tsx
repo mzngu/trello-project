@@ -182,7 +182,7 @@ const useSettingsStyles = createThemedStyles(colors => StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 15,
-    color: colors.textPrimary, // Ensure visibility
+    color: colors.textPrimary,
   },
   settingsItem: {
     flexDirection: 'row',
@@ -192,7 +192,7 @@ const useSettingsStyles = createThemedStyles(colors => StyleSheet.create({
   settingsLabel: {
     width: 140,
     fontSize: 14,
-    color: colors.textPrimary, // Ensure label is visible
+    color: colors.textPrimary,
   },
   settingsInput: {
     flex: 1,
@@ -200,7 +200,7 @@ const useSettingsStyles = createThemedStyles(colors => StyleSheet.create({
     borderBottomColor: colors.secondary,
     paddingVertical: 5,
     fontSize: 14,
-    color: colors.textPrimary, // Ensure input text is visible
+    color: colors.textPrimary,
   },
   settingsButtonsContainer: {
     flexDirection: 'row',

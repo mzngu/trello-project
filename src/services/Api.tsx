@@ -13,14 +13,12 @@ const trelloApi = axios.create({
   },
 });
 
-// Types for Trello data
 export interface TrelloBoard {
   id: string;
   name: string;
   desc: string;
   closed: boolean;
   url: string;
-  // Add other fields as needed
 }
 
 export interface TrelloList {
@@ -28,7 +26,6 @@ export interface TrelloList {
   name: string;
   closed: boolean;
   idBoard: string;
-  // Add other fields as needed
 }
 
 export interface TrelloCard {
@@ -40,7 +37,6 @@ export interface TrelloCard {
   idList: string;
   due: string | null;
   labels: TrelloLabel[];
-  // Add other fields as needed
 }
 
 export interface TrelloLabel {
@@ -95,7 +91,7 @@ export const boardsApi = {
   },
 
   /**
-   * Delete (close) a board
+   * Delete and close a board
    */
   deleteBoard: async (boardId: string): Promise<void> => {
     await trelloApi.put(`/boards/${boardId}`, { closed: true });

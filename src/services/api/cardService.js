@@ -2,7 +2,7 @@ import trelloClient from './trelloApi';
 
 const CardService = {
   // Get a specific card by ID
-  getCard: async (cardId) => {
+  getCard: async (cardId : string) => {
     try {
       const response = await trelloClient.get(`/cards/${cardId}`);
       return response.data;

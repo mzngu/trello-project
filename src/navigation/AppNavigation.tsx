@@ -52,7 +52,7 @@ const AppNavigation = () => {
         cardStyle: { backgroundColor: colors.background },
       }}
     >
-      {/* Always include all screens but control access via navigation events */}
+
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="Home" component={HomeScreen} />

@@ -4,7 +4,7 @@
     "slug": "prismapp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "src/assets/logoPrism.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "trelltech",
     "assetBundlePatterns": [
@@ -15,12 +15,12 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "src/assets/logoPrism.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#b3e5fc"
       }
     },
     "web": {
-      "favicon": "src/assets/logoPrism.png"
+      "favicon": "./assets/favicon.png"
     },
     "sdkVersion": "52.0.0"
   }

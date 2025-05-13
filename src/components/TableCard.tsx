@@ -5,26 +5,25 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigation';
 import colors from '../styles/color';
 
-// Définition des propriétés des cards
 type TableCardProps = {
   id: string;
   title: string;
   color: string;
+  onPress: () => void;
 };
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
-const TableCard: React.FC<TableCardProps> = ({ id, title, color }) => {
-  const navigation = useNavigation<NavigationProp>();
-
-  const handlePress = () => {
-    navigation.navigate('Order', { tableId: id, tableName: title });
-  };
-
+const TableCard: React.FC<TableCardProps> = ({
+  id,
+  title,
+  color,
+  onPress
+}) => {
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.tableItem, { backgroundColor: color }]}
-      onPress={handlePress}
+      onPress={onPress}
     >
       <Text style={styles.tableText}>{title}</Text>
     </TouchableOpacity>

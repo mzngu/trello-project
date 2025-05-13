@@ -113,14 +113,14 @@ const HomeScreen = () => {
     navigation.navigate('BoardDetail', { 
       boardId: board.id,
       boardName: board.name,
-      workspaceId: '' // You might want to pass the actual workspace ID if needed
+      workspaceId: ''
     });
   };
 
   // Navigate to create board screen
   const handleCreateBoard = () => {
     navigation.navigate('CreateBoard', {
-      workspaceId: '', // You might want to select a default workspace
+      workspaceId: '',
       workspaceName: 'Mon Espace'
     });
   };

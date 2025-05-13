@@ -33,14 +33,13 @@ const BoardService = {
         idOrganization: boardData.workspaceId || '',
       };
       
-      // Handle templates (e.g., Kanban)
+      // Handle templates
       if (boardData.template && boardData.template.toLowerCase() === 'kanban') {
-        params.defaultLists = true; // Creates To Do, Doing, Done lists by default
+        params.defaultLists = true;
       }
       
       const response = await trelloClient.post('/boards', params);
       
-      // If custom template but not using defaultLists, create the template lists
       if (boardData.template && !params.defaultLists) {
         await createTemplateListsForBoard(response.data.id, boardData.template);
       }
@@ -127,7 +126,7 @@ const createTemplateListsForBoard = async (boardId, templateName) => {
       await trelloClient.post('/lists', {
         name: listsToCreate[i],
         idBoard: boardId,
-        pos: i * 1000, // Position lists properly
+        pos: i * 1000,
       });
     }
     

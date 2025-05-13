@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
-  Modal
+  Modal,
+  Dimensions
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -17,6 +18,9 @@ import { RootStackParamList } from '../navigation/AppNavigation';
 import { CardService, BoardService, handleApiError } from '../services/api';
 import { useTheme, createThemedStyles } from '../context/ThemeContext';
 import Header from '../components/Header';
+
+const PencilIcon = () => <Text style={{ fontSize: 20 }}>✎</Text>;
+const TrashIcon = () => <Text style={{ fontSize: 20 }}>🗑️</Text>;
 
 type CardDetailScreenNavigationProp = StackNavigationProp<RootStackParamList, 'CardDetail'>;
 type CardDetailScreenRouteProp = RouteProp<RootStackParamList, 'CardDetail'>;
@@ -63,35 +67,52 @@ const CardDetailScreen = () => {
   const [boardMembers, setBoardMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Edit mode states
   const [isEditMode, setIsEditMode] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
-  
+
   // Comment states
   const [newComment, setNewComment] = useState('');
   const [isAddingComment, setIsAddingComment] = useState(false);
-  
+
   // Member assignment modal
   const [showMembersModal, setShowMembersModal] = useState(false);
+
+  // Validation function for card data
+  const validateCardData = () => {
+    if (!editName.trim()) {
+      Alert.alert('Erreur', 'Le nom de la carte ne peut pas être vide');
+      return false;
+    }
+    if (editName.length > 100) {
+      Alert.alert('Erreur', 'Le nom de la carte ne peut pas dépasser 100 caractères');
+      return false;
+    }
+    if (editDescription && editDescription.length > 500) {
+      Alert.alert('Erreur', 'La description ne peut pas dépasser 500 caractères');
+      return false;
+    }
+    return true;
+  };
 
   // Fetch card data
   const fetchCardData = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       // Fetch card details
       const cardData = await CardService.getCard(cardId);
       setCard(cardData);
       setEditName(cardData.name);
       setEditDescription(cardData.desc || '');
-      
+
       // Fetch comments
       const commentsData = await CardService.getComments(cardId);
       setComments(commentsData);
-      
+
       // Fetch board members
       const membersData = await BoardService.getBoardMembers(boardId);
       setBoardMembers(membersData);
@@ -115,24 +136,67 @@ const CardDetailScreen = () => {
     }, [cardId])
   );
 
-  // Save card changes
+ // Confirmation before deletion
+  const handleDeleteCardConfirmation = () => {
+    Alert.alert(
+      'Supprimer la carte',
+      `Êtes-vous sûr de vouloir supprimer "${cardName}" ? Cette action est irréversible.`,
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel'
+        },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: handleDeleteCard
+        }
+      ]
+    );
+  };
+
+  // Delete card
+  const handleDeleteCard = async () => {
+    try {
+      setIsLoading(true);
+      await CardService.deleteCard(cardId);
+
+      // Show success message before navigating
+      Alert.alert('Succès', 'Carte supprimée avec succès', [
+        {
+          text: 'OK',
+          onPress: () => navigation.goBack()
+        }
+      ]);
+    } catch (error) {
+      const errorInfo = handleApiError(error, 'Impossible de supprimer la carte');
+      Alert.alert('Erreur', errorInfo.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Save card changes with validation
   const handleSaveChanges = async () => {
-    if (!editName.trim()) {
-      Alert.alert('Erreur', 'Le titre de la carte ne peut pas être vide');
+    // Validate data before saving
+    if (!validateCardData()) {
       return;
     }
 
     try {
       setIsLoading(true);
       await CardService.updateCard(cardId, {
-        name: editName,
-        description: editDescription
+        name: editName.trim(),
+        description: editDescription.trim()
       });
-      
+
+      // Show success message
+      Alert.alert('Succès', 'Carte mise à jour avec succès');
+
       setIsEditMode(false);
       fetchCardData(); // Refresh data
     } catch (error) {
-      const errorInfo = handleApiError(error, 'Failed to update card');
+      const errorInfo = handleApiError(error, 'Impossible de mettre à jour la carte');
       Alert.alert('Erreur', errorInfo.message);
     } finally {
       setIsLoading(false);
@@ -162,15 +226,15 @@ const CardDetailScreen = () => {
   const toggleMemberAssignment = async (memberId: string) => {
     try {
       setIsLoading(true);
-      
+
       const isMemberAssigned = card?.idMembers.includes(memberId);
-      
+
       if (isMemberAssigned) {
         await CardService.removeMember(cardId, memberId);
       } else {
         await CardService.assignMember(cardId, memberId);
       }
-      
+
       fetchCardData(); // Refresh data
     } catch (error) {
       const errorInfo = handleApiError(error, 'Failed to update member assignment');
@@ -180,49 +244,29 @@ const CardDetailScreen = () => {
     }
   };
 
-  // Delete card
-  const handleDeleteCard = () => {
-    Alert.alert(
-      'Supprimer la carte',
-      'Êtes-vous sûr de vouloir supprimer cette carte ? Cette action est irréversible.',
-      [
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsLoading(true);
-              await CardService.deleteCard(cardId);
-              navigation.goBack();
-            } catch (error) {
-              const errorInfo = handleApiError(error, 'Failed to delete card');
-              Alert.alert('Erreur', errorInfo.message);
-              setIsLoading(false);
-            }
-          }
-        }
-      ]
-    );
-  };
+
 
   // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  };
+   const formatDate = (dateString: string) => {
+     const date = new Date(dateString);
+     return date.toLocaleString('fr-FR', {
+       year: 'numeric',
+       month: 'long',
+       day: 'numeric',
+       hour: '2-digit',
+       minute: '2-digit'
+     });
+   };
 
   return (
     <SafeAreaView style={styles.container}>
       <Header
         title={isEditMode ? "Modifier la carte" : cardName}
-        showBackButton={true}
+        showBack={true}
         onBackPress={() => navigation.goBack()}
       />
-      
+
+
       <View style={styles.content}>
         {isLoading && !card ? (
           <View style={styles.loaderContainer}>
@@ -248,7 +292,7 @@ const CardDetailScreen = () => {
                   onChangeText={setEditName}
                   placeholder="Titre de la carte"
                 />
-                
+
                 <Text style={styles.inputLabel}>Description</Text>
                 <TextInput
                   style={[styles.input, styles.textareaInput]}
@@ -259,7 +303,7 @@ const CardDetailScreen = () => {
                   numberOfLines={6}
                   textAlignVertical="top"
                 />
-                
+
                 <View style={styles.editActions}>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.cancelButton]}
@@ -267,7 +311,7 @@ const CardDetailScreen = () => {
                   >
                     <Text style={styles.cancelButtonText}>Annuler</Text>
                   </TouchableOpacity>
-                  
+
                   <TouchableOpacity
                     style={[styles.actionButton, styles.saveButton]}
                     onPress={handleSaveChanges}
@@ -292,7 +336,7 @@ const CardDetailScreen = () => {
                     <Text style={styles.emptyText}>Aucune description</Text>
                   )}
                 </View>
-                
+
                 <View style={styles.cardSection}>
                   <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Membres assignés</Text>
@@ -303,7 +347,7 @@ const CardDetailScreen = () => {
                       <Text style={styles.addButtonText}>Gérer</Text>
                     </TouchableOpacity>
                   </View>
-                  
+
                   {card?.members && card.members.length > 0 ? (
                     <View style={styles.membersList}>
                       {card.members.map(member => (
@@ -321,10 +365,10 @@ const CardDetailScreen = () => {
                     <Text style={styles.emptyText}>Aucun membre assigné</Text>
                   )}
                 </View>
-                
+
                 <View style={styles.cardSection}>
                   <Text style={styles.sectionTitle}>Commentaires</Text>
-                  
+
                   <View style={styles.addCommentContainer}>
                     <TextInput
                       style={styles.commentInput}
@@ -348,7 +392,7 @@ const CardDetailScreen = () => {
                       )}
                     </TouchableOpacity>
                   </View>
-                  
+
                   {comments.length > 0 ? (
                     <View style={styles.commentsList}>
                       {comments.map(comment => (
@@ -376,7 +420,7 @@ const CardDetailScreen = () => {
                     <Text style={styles.emptyText}>Aucun commentaire</Text>
                   )}
                 </View>
-                
+
                 <View style={styles.cardActions}>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.editButton]}
@@ -384,7 +428,7 @@ const CardDetailScreen = () => {
                   >
                     <Text style={styles.editButtonText}>Modifier</Text>
                   </TouchableOpacity>
-                  
+
                   <TouchableOpacity
                     style={[styles.actionButton, styles.deleteButton]}
                     onPress={handleDeleteCard}
@@ -397,7 +441,7 @@ const CardDetailScreen = () => {
           </ScrollView>
         )}
       </View>
-      
+
       {/* Members assignment modal */}
       <Modal
         visible={showMembersModal}
@@ -408,11 +452,11 @@ const CardDetailScreen = () => {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Assigner des membres</Text>
-            
+
             <ScrollView style={styles.modalScrollView}>
               {boardMembers.map(member => {
                 const isAssigned = card?.idMembers.includes(member.id);
-                
+
                 return (
                   <TouchableOpacity
                     key={member.id}
@@ -437,7 +481,7 @@ const CardDetailScreen = () => {
                 );
               })}
             </ScrollView>
-            
+
             <TouchableOpacity
               style={styles.closeModalButton}
               onPress={() => setShowMembersModal(false)}
@@ -455,8 +499,19 @@ const CardDetailScreen = () => {
 const useCardDetailStyles = createThemedStyles(colors => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.backgroundColor,
   },
+  actionIconsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        paddingHorizontal: 15,
+        paddingVertical: 10,
+        backgroundColor: colors.card,
+  },
+      actionIcon: {
+          marginLeft: 15,
+        padding: 5,
+      },
   content: {
     flex: 1,
   },
@@ -509,6 +564,7 @@ const useCardDetailStyles = createThemedStyles(colors => StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 10,
+    color: colors.textLight,
   },
   descriptionText: {
     fontSize: 14,
